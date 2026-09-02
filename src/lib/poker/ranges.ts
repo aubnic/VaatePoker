@@ -1,25 +1,7 @@
 import { RANK_ORDER } from "./hand.ts";
 
-export type HandType = "pair" | "suited" | "offsuit";
-
-export function handKey(r1: string, r2: string, suited: boolean): string {
-  if (r1 === r2) return r1 + r2;
-  return suited ? r1 + r2 + "s" : r1 + r2 + "o";
-}
-
-export function allHandKeys(): string[] {
-  const keys: string[] = [];
-  for (let i = 0; i < RANK_ORDER.length; i++) {
-    for (let j = 0; j < RANK_ORDER.length; j++) {
-      const a = RANK_ORDER[i]!;
-      const b = RANK_ORDER[j]!;
-      if (i === j) keys.push(a + b);
-      else if (i < j) keys.push(a + b + "s");
-      else keys.push(b + a + "o");
-    }
-  }
-  return keys;
-}
+export type Action = "raise" | "call" | "allin";
+export type Paint = Partial<Record<string, Action>>;
 
 export function comboCount(key: string): number {
   if (key.length === 2) return 6;
@@ -33,66 +15,86 @@ export function rangeStats(selected: Set<string>) {
   return { combos, pct: (combos / 1326) * 100, hands: selected.size };
 }
 
-function expand(spec: string[]): Set<string> {
-  return new Set(spec);
+export function paintStats(paint: Paint) {
+  const by: Record<Action, Set<string>> = {
+    raise: new Set(),
+    call: new Set(),
+    allin: new Set(),
+  };
+  for (const [k, a] of Object.entries(paint)) {
+    if (a) by[a].add(k);
+  }
+  const inRange = new Set([...by.raise, ...by.call, ...by.allin]);
+  return { ...rangeStats(inRange), by, inRange };
 }
 
-/** Tight-aggressive 6-max opens (pedagogisk, ikke solver). */
-export const PRESETS: Record<string, { label: string; level: string; hands: Set<string> }> = {
-  utg: {
-    label: "6-max UTG åpne",
-    level: "Nybegynner",
-    hands: expand([
-      "AA","KK","QQ","JJ","TT","99","88",
-      "AKs","AQs","AJs","ATs","A9s",
-      "KQs","KJs","KTs","QJs","QTs","JTs",
-      "AKo","AQo","AJo","KQo",
-    ]),
-  },
-  btn: {
-    label: "6-max BTN åpne",
-    level: "Nybegynner",
-    hands: expand([
-      "AA","KK","QQ","JJ","TT","99","88","77","66","55","44","33","22",
-      "AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s",
-      "KQs","KJs","KTs","K9s","K8s","QJs","QTs","Q9s","JTs","J9s","T9s","T8s",
-      "98s","97s","87s","86s","76s","75s","65s",
-      "AKo","AQo","AJo","ATo","A9o","KQo","KJo","KTo","QJo","QTo","JTo",
-    ]),
-  },
-  bbdef: {
-    label: "BB defend vs BTN (ca.)",
-    level: "Viderekommen",
-    hands: expand([
-      "AA","KK","QQ","JJ","TT","99","88","77","66","55","44","33","22",
-      "AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s",
-      "KQs","KJs","KTs","K9s","K8s","K7s","K6s","QJs","QTs","Q9s","Q8s",
-      "JTs","J9s","J8s","T9s","T8s","98s","97s","87s","76s","65s","54s",
-      "AKo","AQo","AJo","ATo","A9o","A8o","A7o","A5o",
-      "KQo","KJo","KTo","QJo","QTo","JTo","T9o",
-    ]),
-  },
-  jam10: {
-    label: "BTN shove ~10 bb",
-    level: "Turnering",
-    hands: expand([
-      "AA","KK","QQ","JJ","TT","99","88","77","66","55","44","33","22",
-      "AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s",
-      "KQs","KJs","KTs","K9s","K8s","QJs","QTs","Q9s","JTs","J9s","T9s","98s","87s","76s",
-      "AKo","AQo","AJo","ATo","A9o","A8o","KQo","KJo","KTo","QJo","QTo","JTo",
-    ]),
-  },
-  jam15: {
-    label: "BTN shove ~15 bb",
-    level: "Turnering",
-    hands: expand([
-      "AA","KK","QQ","JJ","TT","99","88","77","66",
-      "AKs","AQs","AJs","ATs","A9s","A8s","A7s","A5s","A4s",
-      "KQs","KJs","KTs","QJs","JTs",
-      "AKo","AQo","AJo","KQo",
-    ]),
-  },
-};
+/** Expand "77+", "A5s+", "KTo+" or a bare hand. */
+export function expandToken(token: string): string[] {
+  const t = token.trim();
+  if (!t) return [];
+  if (!t.endsWith("+")) return [t];
+  const base = t.slice(0, -1);
+  if (base.length === 2 && base[0] === base[1]) {
+    const idx = RANK_ORDER.indexOf(base[0]!);
+    if (idx < 0) return [];
+    return [...RANK_ORDER]
+      .slice(0, idx + 1)
+      .map((r) => r + r);
+  }
+  const suited = base.endsWith("s");
+  const off = base.endsWith("o");
+  if (!suited && !off) return [t];
+  const r1 = base[0]!;
+  const r2 = base[1]!;
+  const i1 = RANK_ORDER.indexOf(r1);
+  const i2 = RANK_ORDER.indexOf(r2);
+  if (i1 < 0 || i2 < 0 || i2 <= i1) return [];
+  const out: string[] = [];
+  const suffix = suited ? "s" : "o";
+  for (let j = i1 + 1; j <= i2; j++) {
+    out.push(r1 + RANK_ORDER[j]! + suffix);
+  }
+  return out;
+}
+
+export function expandSpec(spec: string): string[] {
+  const keys = new Set<string>();
+  for (const raw of spec.split(/[,\s]+/).filter(Boolean)) {
+    for (const k of expandToken(raw)) keys.add(k);
+  }
+  return [...keys];
+}
+
+export function paintFromSpec(raise: string, call = "", asAllin = false): Paint {
+  const p: Paint = {};
+  for (const k of expandSpec(call)) p[k] = "call";
+  for (const k of expandSpec(raise)) p[k] = asAllin ? "allin" : "raise";
+  return p;
+}
+
+export function comparePaint(user: Paint, sol: Paint) {
+  const u = paintStats(user).inRange;
+  const s = paintStats(sol).inRange;
+  let hitC = 0;
+  let missC = 0;
+  let extraC = 0;
+  for (const k of s) {
+    const c = comboCount(k);
+    if (u.has(k)) hitC += c;
+    else missC += c;
+  }
+  for (const k of u) {
+    if (!s.has(k)) extraC += comboCount(k);
+  }
+  const solC = hitC + missC;
+  return {
+    hitC,
+    missC,
+    extraC,
+    solC,
+    coverage: solC ? (hitC / solC) * 100 : 100,
+  };
+}
 
 export function gridCell(row: number, col: number): string {
   const r1 = RANK_ORDER[row]!;
@@ -100,4 +102,8 @@ export function gridCell(row: number, col: number): string {
   if (row === col) return r1 + r2;
   if (row < col) return r1 + r2 + "s";
   return r2 + r1 + "o";
+}
+
+export function keysOf(paint: Paint): string[] {
+  return Object.keys(paint).filter((k) => paint[k]);
 }
