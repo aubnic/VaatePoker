@@ -24,6 +24,12 @@
       <button data-view="icm">ICM</button>
       <button data-view="plo5">PLO5</button>
       <button data-view="ocr">OCR</button>
+      <button data-view="learn">Lær</button>
+      <button data-view="preflop">Preflop</button>
+      <button data-view="math">SPR/MDF</button>
+      <button data-view="holdem">Hold'em</button>
+      <button data-view="bankroll">Bankroll</button>
+
     </nav>
   </header>
 
@@ -56,6 +62,32 @@
           <h2>PLO5 equity</h2>
           <p>Monte Carlo for 5-korts Omaha. Nøyaktig 2 hole + 3 board. Heads-up.</p>
         </article>
+        <article class="tool-card" onclick="showView('learn')">
+          <span class="icon">§</span>
+          <h2>Lær</h2>
+          <p>Håndrangering, 6-max-posisjon, outs-tabell og quiz.</p>
+        </article>
+        <article class="tool-card" onclick="showView('preflop')">
+          <span class="icon">▣</span>
+          <h2>Preflop</h2>
+          <p>13×13 ranges: UTG, BTN, BB-defend og 10/15 bb shove.</p>
+        </article>
+        <article class="tool-card" onclick="showView('math')">
+          <span class="icon">%</span>
+          <h2>SPR · MDF · bløff</h2>
+          <p>Commit-sone, forsvarsfrekvens og semi-bløff-EV.</p>
+        </article>
+        <article class="tool-card" onclick="showView('holdem')">
+          <span class="icon">♥</span>
+          <h2>Hold'em equity</h2>
+          <p>To kort heads-up. Monte Carlo mot en kjent hånd.</p>
+        </article>
+        <article class="tool-card" onclick="showView('bankroll')">
+          <span class="icon">Σ</span>
+          <h2>Bankroll</h2>
+          <p>Buy-ins, ruin-risiko og svingrom.</p>
+        </article>
+
         <article class="tool-card" onclick="showView('ocr')">
           <span class="icon">▣</span>
           <h2>OCR</h2>
@@ -276,6 +308,88 @@
         </div>
       </div>
     </section>
+<section id="view-learn" class="view">
+  <header class="view-head"><h1>Lær poker</h1><p>Rangering, posisjon, outs og quiz.</p></header>
+  <div class="panel">
+    <h3>Håndrangering</h3>
+    <ol id="rank-list"></ol>
+    <h3>6-max posisjon</h3>
+    <p class="hint">UTG strammest → BTN bredest. BB forsvarer med potodds. SB er verst postflop.</p>
+    <h3>Outs (rule of 2 og 4)</h3>
+    <table><thead><tr><th>Draw</th><th>Outs</th><th>Flop→river</th><th>Turn→river</th></tr></thead>
+    <tbody>
+      <tr><td>Flush</td><td>9</td><td>35%</td><td>19%</td></tr>
+      <tr><td>OESD</td><td>8</td><td>32%</td><td>17%</td></tr>
+      <tr><td>Gutshot</td><td>4</td><td>16%</td><td>9%</td></tr>
+      <tr><td>Flush+OESD</td><td>15</td><td>54%</td><td>33%</td></tr>
+    </tbody></table>
+  </div>
+  <div class="panel" style="margin-top:1rem">
+    <h3>Quiz</h3>
+    <p id="quiz-q"></p>
+    <div id="quiz-opts" class="quick-bets"></div>
+    <p class="hint" id="quiz-why"></p>
+    <button type="button" class="ghost" onclick="quizNext()">Neste</button>
+    <p class="hint" id="quiz-score"></p>
+  </div>
+</section>
+<section id="view-preflop" class="view">
+  <header class="view-head"><h1>Preflop-ranges</h1><p>Pedagogisk 6-max. Øvre triangel = suited.</p></header>
+  <div class="quick-bets" id="range-presets"></div>
+  <div class="panel" style="overflow:auto"><div id="range-grid" class="chip-picker"></div></div>
+  <div class="panel result" id="range-stats"></div>
+</section>
+<section id="view-math" class="view">
+  <header class="view-head"><h1>SPR, MDF, bløff</h1><p>Tre kjernebegreper for viderekomne.</p></header>
+  <div class="layout-2">
+    <form class="panel" onsubmit="return false">
+      <h3>SPR</h3>
+      <label>Stack <input id="spr-s" type="number" value="120"></label>
+      <label>Pot <input id="spr-p" type="number" value="20"></label>
+      <h3>MDF</h3>
+      <label>Pot <input id="mdf-p" type="number" value="100"></label>
+      <label>Bet <input id="mdf-b" type="number" value="50"></label>
+      <h3>Bløff-EV</h3>
+      <label>Pot <input id="bl-p" type="number" value="100"></label>
+      <label>Bet <input id="bl-b" type="number" value="50"></label>
+      <label>Fold % <input id="bl-f" type="number" value="40"></label>
+      <label>Equity når calla % <input id="bl-e" type="number" value="0"></label>
+      <button type="button" class="primary" onclick="calcMath()">Beregn</button>
+    </form>
+    <div class="panel result" id="math-result"></div>
+  </div>
+</section>
+<section id="view-bankroll" class="view">
+  <header class="view-head"><h1>Bankroll</h1><p>Hvor mange buy-ins. Grov ruin-risiko.</p></header>
+  <div class="layout-2">
+    <form class="panel" onsubmit="return false">
+      <label>Type
+        <select id="br-g"><option value="cash">Cash</option><option value="mtt">MTT</option></select>
+      </label>
+      <label>Buy-in <input id="br-bi" type="number" value="50"></label>
+      <label>Bankroll <input id="br-br" type="number" value="1500"></label>
+      <label>Winrate <input id="br-wr" type="number" value="5"></label>
+      <label>Std.avvik <input id="br-sd" type="number" value="90"></label>
+      <button type="button" class="primary" onclick="calcBR()">Beregn</button>
+    </form>
+    <div class="panel result" id="br-result"></div>
+  </div>
+</section>
+<section id="view-holdem" class="view">
+  <header class="view-head"><h1>Hold'em equity</h1><p>To hole-kort. Format As Kh.</p></header>
+  <div class="layout-2">
+    <form class="panel" onsubmit="return false">
+      <label>Hero <input id="nl-hero" value="As Kh"></label>
+      <label>Villain <input id="nl-vil" value="Qd Qc"></label>
+      <label>Board <input id="nl-board" placeholder="2s 7h Qc"></label>
+      <label>Iterasjoner
+        <select id="nl-iters"><option value="3000">3 000</option><option value="8000" selected>8 000</option></select>
+      </label>
+      <button type="button" class="primary" onclick="calcNL()">Kjør</button>
+    </form>
+    <div class="panel result" id="nl-result"><p class="muted">Kjør simulering.</p></div>
+  </div>
+</section>
   </main>
 
   <footer>

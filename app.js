@@ -511,3 +511,131 @@ function sendOcrTo(which) {
 
 /* initial demo calc */
 calcPotOdds();
+
+/* extra tools */
+const RANK_ORDER = "AKQJT98765432";
+function gridCell(row, col) {
+  const r1 = RANK_ORDER[row], r2 = RANK_ORDER[col];
+  if (row === col) return r1 + r2;
+  if (row < col) return r1 + r2 + "s";
+  return r2 + r1 + "o";
+}
+function comboCount(key) {
+  if (key.length === 2) return 6;
+  if (key.endsWith("s")) return 4;
+  return 12;
+}
+const PRESETS = {
+  utg: ["AA","KK","QQ","JJ","TT","99","88","AKs","AQs","AJs","ATs","A9s","KQs","KJs","KTs","QJs","QTs","JTs","AKo","AQo","AJo","KQo"],
+  btn: ["AA","KK","QQ","JJ","TT","99","88","77","66","55","44","33","22","AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s","KQs","KJs","KTs","K9s","K8s","QJs","QTs","Q9s","JTs","J9s","T9s","T8s","98s","97s","87s","86s","76s","75s","65s","AKo","AQo","AJo","ATo","A9o","KQo","KJo","KTo","QJo","QTo","JTo"],
+  jam10: ["AA","KK","QQ","JJ","TT","99","88","77","66","55","44","33","22","AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s","KQs","KJs","KTs","K9s","K8s","QJs","QTs","Q9s","JTs","J9s","T9s","98s","87s","76s","AKo","AQo","AJo","ATo","A9o","A8o","KQo","KJo","KTo","QJo","QTo","JTo"],
+};
+let rangeSel = new Set(PRESETS.utg);
+
+function buildRange() {
+  const box = $("range-grid");
+  const presets = $("range-presets");
+  if (!box) return;
+  presets.innerHTML = "";
+  [["utg","6-max UTG"],["btn","6-max BTN"],["jam10","BTN shove 10bb"]].forEach(([k,l]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = l;
+    b.onclick = () => { rangeSel = new Set(PRESETS[k]); buildRange(); };
+    presets.appendChild(b);
+  });
+  box.innerHTML = "";
+  box.style.display = "grid";
+  box.style.gridTemplateColumns = "repeat(13, 2rem)";
+  for (let r = 0; r < 13; r++) for (let c = 0; c < 13; c++) {
+    const key = gridCell(r, c);
+    const el = document.createElement("button");
+    el.type = "button"; el.textContent = key;
+    el.className = "pcard";
+    el.style.width = "2rem"; el.style.height = "2rem"; el.style.fontSize = "9px";
+    if (rangeSel.has(key)) el.style.background = "#8fbfa8";
+    el.onclick = () => { rangeSel.has(key) ? rangeSel.delete(key) : rangeSel.add(key); buildRange(); };
+    box.appendChild(el);
+  }
+  let combos = 0; for (const k of rangeSel) combos += comboCount(k);
+  $("range-stats").innerHTML = `<p class="muted">Range</p><div class="big">${fmt((combos/1326)*100,1)}%</div>
+    <div class="metric"><span>Combos</span><b>${combos} / 1326</b></div>`;
+}
+
+function calcMath() {
+  const stack = Number($("spr-s").value)||0, pot = Number($("spr-p").value)||0;
+  const spr = pot>0 ? stack/pot : Infinity;
+  const mp = Number($("mdf-p").value)||0, mb = Number($("mdf-b").value)||0;
+  const mdf = (mp+mb)>0 ? mp/(mp+mb) : 0;
+  const bp = Number($("bl-p").value)||0, bb = Number($("bl-b").value)||0;
+  const f = (Number($("bl-f").value)||0)/100, e = (Number($("bl-e").value)||0)/100;
+  const ev = f*bp + (1-f)*(e*(bp+2*bb)-bb);
+  $("math-result").innerHTML = `
+    <div class="metric"><span>SPR</span><b>${fmt(spr,1)}</b></div>
+    <div class="metric"><span>MDF</span><b>${fmt(mdf*100,1)}%</b></div>
+    <div class="metric"><span>Bløff-EV</span><b class="${ev>=0?"ok":"bad"}">${ev>=0?"+":""}${fmt(ev,1)}</b></div>
+    <p class="hint">Lav SPR (<4) = commit. MDF = pot/(pot+bet). Ren bløff 50 inn i 100 trenger ~33% fold.</p>`;
+}
+
+function calcBR() {
+  const g = $("br-g").value, bi = Number($("br-bi").value)||1, br = Number($("br-br").value)||0;
+  const wr = Number($("br-wr").value)||0, sd = Math.max(Number($("br-sd").value)||1,1);
+  const buyins = br/bi, target = g==="cash"?30:80;
+  const ror = wr<=0 ? 1 : Math.exp((-2*wr*(buyins*100))/(sd*sd*100));
+  $("br-result").innerHTML = `<div class="big ${buyins>=target*0.8?"ok":"bad"}">${fmt(buyins,1)} BI</div>
+    <div class="metric"><span>Anbefalt</span><b>${target}+</b></div>
+    <div class="metric"><span>Ruin (grov)</span><b>${fmt(Math.min(1,ror)*100,1)}%</b></div>`;
+}
+
+function best7(hole, board) {
+  const seven = hole.concat(board);
+  let best = -1;
+  const cs = combos(seven, 5);
+  for (const c of cs) { const v = eval5(c); if (v>best) best=v; }
+  return best;
+}
+
+async function calcNL() {
+  const h = parseCards($("nl-hero").value), v = parseCards($("nl-vil").value), b = parseCards($("nl-board").value||"");
+  if (h.error||v.error||b.error) { $("nl-result").innerHTML = `<p class="bad">${h.error||v.error||b.error}</p>`; return; }
+  if (h.cards.length!==2||v.cards.length!==2) { $("nl-result").innerHTML = `<p class="bad">2 kort hver.</p>`; return; }
+  const used = new Set([...h.cards,...v.cards,...b.cards]);
+  const remaining = fullDeck().filter(c=>!used.has(c));
+  const need = 5-b.cards.length, iters = Number($("nl-iters").value);
+  const rng = rngFrom(Date.now()%1e9);
+  let wins=0,losses=0,ties=0;
+  for (let i=0;i<iters;i++){
+    shuffleInPlace(remaining,rng);
+    const board = b.cards.concat(remaining.slice(0,need));
+    const hv = best7(h.cards,board), vv = best7(v.cards,board);
+    if (hv>vv) wins++; else if (hv<vv) losses++; else ties++;
+  }
+  const eq = ((wins+ties/2)/iters)*100;
+  $("nl-result").innerHTML = `<p class="muted">Hero equity</p><div class="big ok">${fmt(eq,1)}%</div>
+    <div class="metric"><span>Villain</span><b>${fmt(((losses+ties/2)/iters)*100,1)}%</b></div>`;
+}
+
+const QUIZ = [
+  {q:"Flush draw på floppen. Outs?", opts:["4","8","9","15"], a:2, w:"9 outs (13-4 spades left)."},
+  {q:"½-pot bet. MDF?", opts:["25%","33%","50%","67%"], a:3, w:"MDF = pot/(pot+bet) = 100/150 ≈ 67%."},
+  {q:"Straight vs flush?", opts:["Straight vinner","Flush vinner","Like","Kicker"], a:1, w:"Flush slår straight."},
+];
+let qi=0, qpick=null, qscore=0, qn=0;
+function renderQuiz() {
+  const item = QUIZ[qi];
+  $("quiz-q").textContent = item.q;
+  $("quiz-opts").innerHTML = "";
+  item.opts.forEach((o,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.textContent=o;
+    b.onclick=()=>{ if(qpick!=null) return; qpick=i; qn++; if(i===item.a) qscore++; $("quiz-why").textContent=item.w; $("quiz-score").textContent=qscore+"/"+qn+" riktig"; };
+    $("quiz-opts").appendChild(b);
+  });
+  $("quiz-why").textContent="";
+}
+function quizNext(){ qpick=null; qi=(qi+1)%QUIZ.length; renderQuiz(); }
+
+const ranks = ["Royal/straight flush","Fire like","Hus","Flush","Straight","Trips","To par","Par","Høyt kort"];
+const ol = $("rank-list");
+if (ol) ol.innerHTML = ranks.map(r=>`<li>${r}</li>`).join("");
+buildRange();
+renderQuiz();
+
