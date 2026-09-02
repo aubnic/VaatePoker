@@ -309,20 +309,28 @@
       </div>
     </section>
 <section id="view-learn" class="view">
-  <header class="view-head"><h1>Lær poker</h1><p>Rangering, posisjon, outs og quiz.</p></header>
+  <header class="view-head">
+    <h1>Lær poker</h1>
+    <p>Begrepene i vanlig norsk, med et eksempel hver. Poker er å vite hvor ofte du treffer, hva det koster, og når posisjon gjør en middelmådig hånd spillbar.</p>
+  </header>
   <div class="panel">
-    <h3>Håndrangering</h3>
-    <ol id="rank-list"></ol>
-    <h3>6-max posisjon</h3>
-    <p class="hint">UTG strammest → BTN bredest. BB forsvarer med potodds. SB er verst postflop.</p>
-    <h3>Outs (rule of 2 og 4)</h3>
-    <table><thead><tr><th>Draw</th><th>Outs</th><th>Flop→river</th><th>Turn→river</th></tr></thead>
-    <tbody>
-      <tr><td>Flush</td><td>9</td><td>35%</td><td>19%</td></tr>
-      <tr><td>OESD</td><td>8</td><td>32%</td><td>17%</td></tr>
-      <tr><td>Gutshot</td><td>4</td><td>16%</td><td>9%</td></tr>
-      <tr><td>Flush+OESD</td><td>15</td><td>54%</td><td>33%</td></tr>
-    </tbody></table>
+    <h3>Fire gater</h3>
+    <p class="hint"><b>Preflop</b> — to skjulte kort, blinds i potten. <b>Flop</b> — tre felleskort, du ser 5 av 7. <b>Turn</b> — fjerde kort, draws blir dyrere. <b>River</b> — siste kort, ingen outs igjen.</p>
+    <h3>Hvem vinner</h3>
+    <p class="hint">Fem kort teller. Rangert ovenfra: royal/straight flush, fire like, hus, flush, straight, trips, to par, par, høyt kort. Alt slår det som står under. Like hender deler.</p>
+    <h3>Posisjon</h3>
+    <p class="hint">Å handle sist er informasjon. UTG åpner stramt (~12 %) fordi fem bak deg kan raise. BTN handler sist postflop og åpner bredt (~40 %). SB er verst etter floppen. BB får potodds til å forsvare vs steals.</p>
+    <h3>Outs</h3>
+    <p class="hint">Et out er et kort som fortsatt ligger i stokken og gir deg hånden du jager. 4♠5♠ på 6♠7♦2♣: 3 og 8 er straight (8 outs). Ved bordet: ×4 på flop, ×2 på turn. Flush draw = 9 outs ≈ 35 % mot river.</p>
+    <h3>Ordbok</h3>
+    <p class="hint"><b>Equity</b> — hvor ofte vinner du til showdown. AK vs QQ ≈ 43 %, ikke «AK er bedre».</p>
+    <p class="hint"><b>Potodds</b> — prisen for å calle. 50 inn i 100: du betaler 50 for å vinne 200 = 25 % påkrevd. Har du mer equity enn det, er call +EV.</p>
+    <p class="hint"><b>EV</b> — snittet per gang. +EV betyr at du tjener på sikt selv om du taper denne pott.</p>
+    <p class="hint"><b>Range</b> — alle hender noen kunne hatt. UTG er en liten haug, BTN en stor.</p>
+    <p class="hint"><b>SPR</b> — stack / pot. Under 4: commit. Over 13: dypt, speculative hender opp i verdi.</p>
+    <p class="hint"><b>MDF</b> — hvor ofte du må forsvare, ellers kan motstanderen bløffe hva som helst. Mot ½-pot ≈ 67 %.</p>
+    <p class="hint"><b>ICM</b> — i turnering er chips ikke kroner. Short stack har mer $ per chip. På boblen folder du hender du ville calla i cash.</p>
+    <p class="hint"><b>PKO</b> — knockout-penger kan gjøre et «for dyrt» call riktig, hvis du dekker stacken.</p>
   </div>
   <div class="panel" style="margin-top:1rem">
     <h3>Quiz</h3>
